@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Hello!</title>
+
+    <style media="screen">
+      body {
+        background: rgb(100, 100, 100);
+      }
+
+      #background-layer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        width: 100%;
+        backgroundColor: rgb(100, 100, 100);
+        /* animation solely on background-size */
+        transition: backgroundColor 2s cubic-bezier(0.64, 0.09, 0.08, 1);
+        z-index: 91;
+      }
+
+      textarea {
+        width: 90vw;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        border-bottom: 1px solid #00000000;
+        padding: 10px;
+        resize: none;
+        spellcheck: false;
+        overflow: auto;
+        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+        /* animation solely on background-size */
+        transition: border-bottom 0.2s cubic-bezier(0.64, 0.09, 0.08, 1);
+        z-index: 100;
+      }
+
+      textarea:focus {
+        border: 0;
+        spellcheck: false;
+        outline: 0;
+        background: transparent;
+        border-bottom: 1px solid white;
+      }
+
+      #app {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        flex-wrap: wrap;
+        z-index: 92;
+        transition: background 0.2s cubic-bezier(0.64, 0.09, 0.08, 1);
+      }
+
+      #message {
+        text-align: center;
+        font-size: 32px;
+        color: white;
+      }
+
+      #colorpicker {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        z-index: 95;
+      }
+
+      .color-item:hover {
+        cursor: pointer;
+      }
+
+      .color-item {
+        -webkit-appearance: none;
+        height: 20px;
+        margin: 10px;
+        width: 20px;
+        border: none;
+      }
+
+    </style>
+
+  </head>
+  <body>
+
+
+    <div id="app" >
+      <div id="colorpicker">
+        <input type="color" class="color-item" v-model="bgcolor"/>
+      </div>
+      <textarea rows="1" id="message" type="text" spellcheck="false"
+          v-model="message" v-bind:style="{ 'color': textcolor }"
+          placeholder="Click here to add text">
+      </textarea>
+      <div id="background-layer" v-bind:style="{ 'backgroundColor': bgcolor }" />
+    </div>
+
+  </body>
+</html>
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script type="text/javascript">
+
+
+  function updateQueryStringParameter(key, value) {
+    let searchParams = new URLSearchParams(location.search);
+    searchParams.set(key, value);
+    // update the url
+    if (window.history.replaceState) {
+      window.history.replaceState({}, null, "index.html?" + searchParams.toString());
+    }
+  }
+
+  function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+  };
+
+  // ************************** Invert Color ****************************
+  function invertColor(hex) {
+    // remove #
+    if (hex.indexOf('#') === 0) {
+        hex = hex.slice(1);
+    }
+    // convert 3-digit hex to 6-digits.
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    var rgb = {r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16)}
+    var yuv = rgb2yuv(rgb);
+    var factor = 180;
+    var threshold = 100;
+    yuv.y = clamp(yuv.y + (yuv.y > threshold ? -factor : factor));
+    var rgb = yuv2rgb(yuv)
+    return '#' + padZero(rgb.r) + padZero(rgb.g) + padZero(rgb.b);
+    // return rgb;
+  }
+
+  function padZero(str, len) {
+    len = len || 2;
+    var zeros = new Array(len).join('0');
+    return (zeros + str).slice(-len);
+  }
+
+  function rgb2yuv(rgb){
+    var y = clamp(rgb.r *  0.29900 + rgb.g *  0.587   + rgb.b * 0.114);
+    var u = clamp(rgb.r * -0.16874 + rgb.g * -0.33126 + rgb.b * 0.50000 + 128);
+    var v = clamp(rgb.r *  0.50000 + rgb.g * -0.41869 + rgb.b * -0.08131 + 128);
+    return {y:y, u:u, v:v};
+  }
+
+  function yuv2rgb(yuv){
+    var y = yuv.y;
+    var u = yuv.u;
+    var v = yuv.v;
+    var r = clamp(y + (v - 128) *  1.40200);
+    var g = clamp(y + (u - 128) * -0.34414 + (v - 128) * -0.71414);
+    var b = clamp(y + (u - 128) *  1.77200);
+    return {r:r,g:g,b:b};
+  }
+
+  function clamp(n){
+      if (n<0) { return 0;}
+      if (n>255) { return 255;}
+      return Math.floor(n);
+  }
+  // **************************** END invert color ****************************
+
+  var app = new Vue({
+    el: '#app',
+    data: {
+      message: 'Hello World!',
+      bgcolor: "#bbbbbb",
+      textcolor: "#ffffff"
+    },
+    mounted: function() {
+      this.message = getUrlParameter("message");
+      var bgcolor = getUrlParameter("bgcolor");
+      console.log(bgcolor);
+      if ( bgcolor != "" ) {
+        this.bgcolor = bgcolor
+      } else {
+        this.bgcolor = "#c0c0c0"
+      }
+    },
+    watch: {
+      message: function(newVal) {
+        // update title
+        document.title = newVal;
+
+        // update url
+        var newUrl = updateQueryStringParameter("message",newVal)
+
+        // update height of the text area [dynamic]
+        setTimeout(function () {
+          var textarea = document.getElementById("message");
+          if(textarea != undefined) {
+            textarea.style.overflow = 'hidden';
+            textarea.style.height = 0;
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+            textarea.style.maxHeight = '95vh';
+          }
+        }, 100);
+      },
+      bgcolor: function(newVal) {
+
+        // invert and update text color
+        this.textcolor = invertColor(newVal);
+
+        // update url
+        var newUrl = updateQueryStringParameter("bgcolor",newVal)
+      }
+    }
+  })
+
+</script>
